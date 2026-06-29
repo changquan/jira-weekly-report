@@ -39,7 +39,7 @@ If CLAUDE.md, GEMINI.md, or AGENTS.md says "don't use TDD" and a skill says "alw
 
 **In other environments:** Check your platform's documentation for how skills are loaded.
 
-To discover which skills exist before invoking one, use the **finding-skills** skill.
+To discover and install skills from the open agent skills ecosystem, use the **find-skills** skill.
 
 # Using Skills
 
