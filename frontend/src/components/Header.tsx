@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { formatStamp } from '../format'
 import styles from './Header.module.css'
 
 interface HeaderProps {
@@ -8,18 +9,6 @@ interface HeaderProps {
   onAsOfChange: (value: string) => void
   onRefresh: () => void
   isLoading: boolean
-}
-
-function formatStamp(generatedAt: string | null): string {
-  if (!generatedAt) return '—'
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(generatedAt))
 }
 
 export function Header({ projectKey, generatedAt, asOf, onAsOfChange, onRefresh, isLoading }: HeaderProps) {

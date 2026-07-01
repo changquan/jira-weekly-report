@@ -27,7 +27,7 @@
   font-family: var(--font-body);
   font-size: 0.85rem;
   color: var(--slate);
-  border: 1px dashed rgba(16, 25, 43, 0.15);
+  border: 1px dashed color-mix(in srgb, var(--ink) 15%, transparent);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   margin: 0;
