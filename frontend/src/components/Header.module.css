@@ -1,0 +1,92 @@
+.masthead {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 1rem 2rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.projectBadge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  border: 1px solid rgba(236, 234, 226, 0.4);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+}
+
+.asOfLabel {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.asOfInput {
+  font-family: var(--font-mono);
+  background: transparent;
+  border: 1px solid rgba(236, 234, 226, 0.4);
+  border-radius: 4px;
+  color: var(--paper);
+  padding: 0.25rem 0.5rem;
+}
+
+.refreshButton {
+  font-family: var(--font-body);
+  font-weight: 600;
+  background: var(--signal-amber);
+  color: var(--ink);
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+.refreshButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.stamp {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: rgba(236, 234, 226, 0.7);
+}
+
+.stampFlip {
+  animation: flip 0.4s ease;
+}
+
+@keyframes flip {
+  0% {
+    opacity: 0.2;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stampFlip {
+    animation: none;
+  }
+}
