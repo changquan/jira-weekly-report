@@ -1,0 +1,41 @@
+.app {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 2rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(193, 68, 46, 0.1);
+  border: 1px solid var(--signal-red);
+  border-radius: 6px;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.errorBanner button {
+  background: var(--signal-red);
+  color: var(--paper);
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.loading {
+  padding: 1.5rem 2rem;
+  font-family: var(--font-body);
+  color: var(--slate);
+}
