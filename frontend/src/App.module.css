@@ -17,7 +17,7 @@
   gap: 1rem;
   margin: 1rem 2rem 0;
   padding: 0.75rem 1rem;
-  background: rgba(193, 68, 46, 0.1);
+  background: color-mix(in srgb, var(--signal-red) 10%, transparent);
   border: 1px solid var(--signal-red);
   border-radius: 6px;
   color: var(--ink);
