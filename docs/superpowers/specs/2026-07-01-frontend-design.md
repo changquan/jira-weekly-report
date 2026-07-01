@@ -99,8 +99,50 @@ consumption.
 
 ## Visual design
 
-Layout structure (three columns, header with controls) is fixed by this
-spec. The specific aesthetic direction (typography, color palette, spacing,
-card treatment) is deliberately left to be decided during implementation
-using the frontend-design skill, aiming for a clean, data-dense management
-dashboard rather than a generic default look.
+Direction: an **ops-desk / dispatch-board** aesthetic — the report reads like
+a control-room status board, scanned by color rather than read line by line.
+
+**Palette** (CSS custom properties):
+
+| Token | Hex | Use |
+| --- | --- | --- |
+| `--ink` | `#10192B` | masthead background, primary text |
+| `--paper` | `#ECEAE2` | page background |
+| `--panel` | `#F4F3ED` | card surface |
+| `--slate` | `#5B6472` | secondary text, "in progress" signal |
+| `--signal-green` | `#4C7A5E` | resolved / progress signal |
+| `--signal-amber` | `#E8A33D` | due-soon / at-risk signal |
+| `--signal-red` | `#C1442E` | overdue signal |
+
+**Type:**
+- Display — Space Grotesk, tracked-out caps — masthead title + column headers
+  only.
+- Body — IBM Plex Sans — summaries, labels.
+- Utility/data — IBM Plex Mono, tabular figures — JIRA keys, dates, the
+  `generatedAt` stamp.
+
+All three loaded via Google Fonts (or self-hosted if offline use matters
+later — out of scope for now).
+
+**Layout:** dark `ink` masthead bar (title, project key, `as_of` date picker,
+Refresh button, `generatedAt` stamp in mono). Below it, three columns of
+`panel` cards on the `paper` background — 6px radius, hairline border, no
+heavy shadows.
+
+**Signature element — the signal rail:** every row (issue/risk/milestone
+card) has a 3px colored bar on its left edge, using the signal colors above
+to encode status: green = resolved, slate = in progress, amber = due soon,
+red = overdue. It's the only saturated color in the UI; everything else
+stays ink/paper/slate, so the rail is what a manager scans first.
+
+**Motion:** minimal. On a successful refresh, the `generatedAt` stamp does a
+brief split-flap-style flip to its new value; this is the only animation in
+the design and must be skipped when `prefers-reduced-motion` is set — the
+timestamp still updates, just without the flip transition. No hover
+scale/shadow effects; hover only brightens a card's signal rail slightly.
+
+**Copy voice:** empty states are specific and actionable per column (e.g.
+"No milestones due" rather than "No data"). The error banner speaks in the
+interface's voice and names what happened (e.g. "Couldn't load this
+week's report — JIRA didn't respond.") with a "Retry" action, never an
+apology.
