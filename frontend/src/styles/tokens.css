@@ -1,0 +1,13 @@
+:root {
+  --ink: #10192b;
+  --paper: #eceae2;
+  --panel: #f4f3ed;
+  --slate: #5b6472;
+  --signal-green: #4c7a5e;
+  --signal-amber: #e8a33d;
+  --signal-red: #c1442e;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
