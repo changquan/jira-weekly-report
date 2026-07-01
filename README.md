@@ -95,6 +95,11 @@ pytest
 
 Tests use a fake searcher and never touch the network.
 
+## Frontend
+
+A React + Vite frontend that renders this API lives in `frontend/`. See
+`frontend/README.md` for setup and run instructions.
+
 ## Project layout
 
 ```
