@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
+// Override when the backend isn't on the default port, e.g.
+// BACKEND_URL=http://localhost:8001 npm run dev
+const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8000'
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -9,8 +13,8 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
+      '/api': backendUrl,
+      '/health': backendUrl,
     },
   },
   test: {

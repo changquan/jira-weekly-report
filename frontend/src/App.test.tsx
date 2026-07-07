@@ -85,7 +85,7 @@ describe('App', () => {
 
     await screen.findByText('Migrate billing service')
 
-    expect(screen.getByText('Nothing in progress this week')).toBeInTheDocument()
+    expect(screen.getByText('Nothing in the current sprint')).toBeInTheDocument()
     expect(screen.getByText('No milestones due')).toBeInTheDocument()
   })
 })

@@ -2,19 +2,22 @@
 
 Columns:
 1. Progress & Risk
-   - progress: issues completed (resolved) during the previous week.
+   - progress: issues completed (resolved) during the previous week,
+     optionally enriched with an AI summary of the comments left on the
+     issue and its subtasks during the reporting window — what was
+     actually done.
    - risks: initiatives that are not Done and are overdue or due within
      ``risk_window_days``.
-2. This week: issues currently in progress (what the team is working on now),
-   optionally enriched with an AI summary of recent comments across the issue
-   and its subtasks.
+2. This week: issues in the currently active sprint(s). The sprint can pull
+   in issues from other projects, so this query is not project-scoped.
 3. Milestones: every initiative and its deadline.
 """
 
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timedelta
+import logging
+from datetime import date, datetime, time, timedelta
 from typing import Any, Protocol
 
 from .activity import CommentSource, collect_activity
@@ -29,6 +32,8 @@ from .models import (
 )
 from .summarizer import ActivitySummarizer
 
+logger = logging.getLogger(__name__)
+
 ISSUE_FIELDS = [
     "summary",
     "status",
@@ -40,8 +45,8 @@ ISSUE_FIELDS = [
     "updated",
 ]
 
-# The "this week" query also needs subtask stubs for the activity summary.
-THIS_WEEK_FIELDS = [*ISSUE_FIELDS, "subtasks"]
+# The progress query also needs subtask stubs for the activity summary.
+PROGRESS_FIELDS = [*ISSUE_FIELDS, "subtasks"]
 
 _DONE_CATEGORY = "Done"
 
@@ -83,11 +88,9 @@ def risk_jql(settings: Settings, cutoff: date) -> str:
 def this_week_jql(settings: Settings) -> str:
     if settings.this_week_jql:
         return settings.this_week_jql
-    return (
-        f'project = "{settings.jira_project_key}" '
-        f'AND statusCategory = "{settings.in_progress_status_category}" '
-        f"ORDER BY updated DESC"
-    )
+    # Sprint membership defines the column; a sprint may contain issues from
+    # several projects, so there is deliberately no project filter here.
+    return "sprint in openSprints() ORDER BY updated DESC"
 
 
 def milestones_jql(settings: Settings) -> str:
@@ -178,8 +181,14 @@ async def _summarize_one(
     since: datetime,
 ) -> None:
     async with semaphore:
-        activity = await collect_activity(comments, raw, since)
-        issue.activity_summary = await summarizer.summarize(issue, activity)
+        try:
+            activity = await collect_activity(comments, raw, since)
+            if not activity.comments:
+                return
+            issue.activity_summary = await summarizer.summarize(issue, activity)
+        except Exception:
+            # A summary is a nice-to-have; never let it fail the report.
+            logger.warning("Activity summary failed for %s", issue.key, exc_info=True)
 
 
 async def _add_activity_summaries(
@@ -188,10 +197,9 @@ async def _add_activity_summaries(
     issues: list[IssueSummary],
     raw_issues: list[dict[str, Any]],
     settings: Settings,
-    now: datetime,
+    since: datetime,
 ) -> None:
-    """Attach an AI activity summary to each in-progress issue, in place."""
-    since = now - timedelta(days=settings.activity_lookback_days)
+    """Attach an AI activity summary to each completed issue, in place."""
     semaphore = asyncio.Semaphore(settings.summary_max_concurrency)
     await asyncio.gather(
         *(
@@ -218,21 +226,24 @@ async def build_report(
     base_url = settings.jira_base_url
 
     progress_raw, risk_raw, this_week_raw, milestones_raw = await asyncio.gather(
-        searcher.search(progress_jql(settings, windows), ISSUE_FIELDS),
+        searcher.search(progress_jql(settings, windows), PROGRESS_FIELDS),
         searcher.search(risk_jql(settings, cutoff), ISSUE_FIELDS),
-        searcher.search(this_week_jql(settings), THIS_WEEK_FIELDS),
+        searcher.search(this_week_jql(settings), ISSUE_FIELDS),
         searcher.search(milestones_jql(settings), ISSUE_FIELDS),
     )
 
-    this_week = [to_issue_summary(r, base_url) for r in this_week_raw]
-    if summarizer is not None and this_week:
+    progress = [to_issue_summary(r, base_url) for r in progress_raw]
+    if summarizer is not None and progress:
+        # Comments count as progress evidence from the start of the reporting
+        # window (last week's Monday) up to the report time.
+        since = datetime.combine(windows.last_week_start, time.min, tzinfo=now.tzinfo)
         await _add_activity_summaries(
             searcher,  # type: ignore[arg-type]  # JiraClient implements CommentSource
             summarizer,
-            this_week,
-            this_week_raw,
+            progress,
+            progress_raw,
             settings,
-            now,
+            since,
         )
 
     return WeeklyReport(
@@ -245,8 +256,8 @@ async def build_report(
             last_week_start=windows.last_week_start,
             last_week_end=windows.last_week_end,
         ),
-        progress=[to_issue_summary(r, base_url) for r in progress_raw],
+        progress=progress,
         risks=[to_risk_item(r, base_url, today) for r in risk_raw],
-        this_week=this_week,
+        this_week=[to_issue_summary(r, base_url) for r in this_week_raw],
         milestones=[to_milestone(r, base_url, today) for r in milestones_raw],
     )

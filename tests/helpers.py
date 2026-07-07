@@ -86,27 +86,36 @@ class FakeSearcher:
         this_week: list[dict[str, Any]] | None = None,
         milestones: list[dict[str, Any]] | None = None,
         comments: dict[str, list[dict[str, Any]]] | None = None,
+        comment_errors: set[str] | None = None,
     ) -> None:
         self.progress = progress or []
         self.risk = risk or []
         self.this_week = this_week or []
         self.milestones = milestones or []
         self.comments = comments or {}
+        self.comment_errors = comment_errors or set()
         self.calls: list[str] = []
+        self.fields_by_column: dict[str, list[str]] = {}
         self.comment_calls: list[str] = []
 
     async def search(self, jql: str, fields: list[str]) -> list[dict[str, Any]]:
         self.calls.append(jql)
         if "resolutiondate >=" in jql:
+            self.fields_by_column["progress"] = fields
             return self.progress
         if "statusCategory != Done" in jql:
+            self.fields_by_column["risk"] = fields
             return self.risk
-        if 'statusCategory = "In Progress"' in jql:
+        if "openSprints()" in jql:
+            self.fields_by_column["this_week"] = fields
             return self.this_week
+        self.fields_by_column["milestones"] = fields
         return self.milestones
 
     async def get_comments(self, issue_key: str) -> list[dict[str, Any]]:
         self.comment_calls.append(issue_key)
+        if issue_key in self.comment_errors:
+            raise RuntimeError(f"comment fetch failed for {issue_key}")
         return self.comments.get(issue_key, [])
 
 
@@ -119,6 +128,6 @@ class FakeSummarizer:
 
     async def summarize(self, issue: Any, activity: Any) -> str | None:
         self.requests.append((issue, activity))
-        if activity.is_empty:
+        if not activity.comments:
             return None
         return self.text

@@ -1,9 +1,9 @@
-"""AI summaries of what is actually being done on each in-progress issue.
+"""AI summaries of the progress made on each completed issue.
 
-Uses the OpenAI SDK to turn an issue's recent comments (including its
-subtasks' comments) into a 1-3 sentence plain-language status blurb for the
-"This week" column. A summarizer failure never fails the report — the issue
-simply renders without a summary.
+Uses the OpenAI SDK to turn the comments left during the reporting window
+(including the subtasks' comments) into a 1-3 sentence plain-language blurb
+of what was done, for the "Progress" column. A summarizer failure never
+fails the report — the issue simply renders without a summary.
 """
 
 from __future__ import annotations
@@ -20,13 +20,15 @@ from .models import IssueSummary
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
-    "You summarize JIRA activity for a weekly management report. Given an "
-    "in-progress issue, its subtasks, and the comments left during the "
-    "reporting window, write 1-3 sentences describing what work is actually "
-    "being done and where it stands. Write in plain language for managers: "
-    "lead with concrete progress, mention blockers if any, and do not repeat "
-    "the issue title or restate metadata like keys and statuses. Respond "
-    "with the summary only - no preamble, no markdown."
+    "You summarize JIRA activity for a weekly management report. Given a "
+    "completed issue, its subtasks, and the comments left during the "
+    "reporting window, write 1-3 sentences describing what was actually "
+    "done to deliver it. Write in plain language for managers, in the past "
+    "tense: lead with the concrete work that was completed, note anything "
+    "notable that came up along the way, and do not repeat the issue title "
+    "or restate metadata like keys and statuses. Only report work that the "
+    "comments support. Respond with the summary only - no preamble, no "
+    "markdown."
 )
 
 _MAX_COMMENT_CHARS = 2000
@@ -45,6 +47,8 @@ def build_activity_prompt(issue: IssueSummary, activity: IssueActivity) -> str:
         f"Issue {issue.key}: {issue.summary}",
         f"Status: {issue.status}" + (f" | Assignee: {issue.assignee}" if issue.assignee else ""),
     ]
+    if issue.resolution_date:
+        lines.append(f"Resolved: {issue.resolution_date:%Y-%m-%d}")
 
     if activity.subtasks:
         lines.append("\nSubtasks:")
@@ -75,7 +79,8 @@ class OpenAIActivitySummarizer:
     async def summarize(
         self, issue: IssueSummary, activity: IssueActivity
     ) -> str | None:
-        if activity.is_empty:
+        if not activity.comments:
+            # Subtask stubs alone say nothing about what was done.
             return None
         # Reasoning models (gpt-5*, o*) spend completion tokens on hidden
         # reasoning first; keep that minimal and leave headroom so the cap is

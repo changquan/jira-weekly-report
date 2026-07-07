@@ -68,7 +68,7 @@ class WeeklyReport(CamelModel):
     """The full three-column weekly report for management.
 
     - ``progress`` + ``risks`` form column 1 (Progress & Risk).
-    - ``this_week`` is column 2 (what the team is working on this week).
+    - ``this_week`` is column 2 (the currently active sprint).
     - ``milestones`` is column 3 (key milestones & deadlines).
     """
 

@@ -2,9 +2,9 @@
 
 Serves canned issues shaped exactly like the real search/comment payloads —
 including subtasks and ADF comment bodies — so the whole pipeline (report
-assembly, comment collection, AI summaries) can be exercised without a JIRA
-instance. All dates are generated relative to "now" so resolved issues always
-fall in last week and comments always fall inside the activity window.
+assembly, comment collection, AI progress summaries) can be exercised without
+a JIRA instance. All dates are generated relative to "now" so resolved issues
+always fall in last week and their comments inside the reporting window.
 """
 
 from __future__ import annotations
@@ -90,6 +90,10 @@ class MockJiraClient:
                 "ABC-10", "Roll out API rate limiter to all tenants",
                 status="Done", category="Done", assignee="Dana Fox",
                 resolutiondate=_jira_ts(days(4)), updated=_jira_ts(days(4)),
+                subtasks=[
+                    _subtask("ABC-12", "Add per-tenant quota configuration", "Done", "Done"),
+                    _subtask("ABC-13", "Enable limiter for the enterprise tier", "Done", "Done"),
+                ],
             ),
             _issue(
                 "ABC-11", "Fix duplicate webhook deliveries on retry",
@@ -139,6 +143,13 @@ class MockJiraClient:
                     _subtask("ABC-25", "Rotate SAML signing certificate", "To Do", "To Do"),
                 ],
             ),
+            # The sprint spans projects and includes not-yet-started work.
+            _issue(
+                "OPS-31", "Provision EU data residency environment",
+                status="To Do", category="To Do",
+                assignee="Marcus Webb", duedate=due_in(9),
+                updated=_jira_ts(days(3)),
+            ),
         ]
 
         self._milestones = [
@@ -151,68 +162,44 @@ class MockJiraClient:
         ]
 
         self._comments: dict[str, list[dict[str, Any]]] = {
-            "ABC-20": [
+            "ABC-10": [
+                _comment(
+                    "Dana Fox", days(8),
+                    "Limiter enabled for the free tier behind a feature flag. "
+                    "No error-rate movement after 48 hours of bake time.",
+                ),
+                _comment(
+                    "Marcus Webb", days(6),
+                    "Load test surfaced a thundering-herd problem when quotas reset "
+                    "at midnight UTC - fixed by jittering the reset window per tenant.",
+                ),
+                _comment(
+                    "Dana Fox", days(4),
+                    "Rolled out to the remaining tenants this morning. Dashboards "
+                    "show p99 latency unchanged and 429s only for the two tenants "
+                    "that were already hammering the API.",
+                ),
+            ],
+            "ABC-12": [
+                _comment(
+                    "Marcus Webb", days(7),
+                    "Per-tenant quota config merged, with overrides pulled from the "
+                    "billing plan so enterprise limits pick up automatically.",
+                ),
+            ],
+            "ABC-13": [
                 _comment(
                     "Dana Fox", days(5),
-                    "Migration dry-run completed against a prod snapshot. "
-                    "41M invoice rows migrated in 38 minutes, well inside the window.",
-                ),
-                _comment(
-                    "Marcus Webb", days(3),
-                    "Found duplicate invoice rows for tenants created before 2024 - "
-                    "the migration was double-counting credit notes. Fix is up for review.",
-                ),
-                _comment(
-                    "Dana Fox", days(1),
-                    "Dedup fix merged and re-verified on staging. Cutover scheduled "
-                    "for Thursday 06:00 UTC. Still waiting on finance sign-off for "
-                    "the reconciliation report - that is the only remaining blocker.",
+                    "Enterprise tier enabled after confirming quota headroom with "
+                    "the three largest accounts.",
                 ),
             ],
-            "ABC-21": [
+            "ABC-11": [
                 _comment(
-                    "Marcus Webb", days(4),
-                    "Migration script merged. Added a rollback path that restores "
-                    "from the pre-cutover snapshot in under 10 minutes.",
-                ),
-            ],
-            "ABC-22": [
-                _comment(
-                    "Dana Fox", days(2),
-                    "Invoice generation running in shadow mode - output matches the "
-                    "legacy system for 99.97% of invoices. Investigating the "
-                    "remaining mismatches, all in multi-currency accounts.",
-                ),
-            ],
-            "ABC-23": [
-                _comment(
-                    "Lee Zhang", days(6),
-                    "14 of 20 pipelines converted. Build times are down about 35% "
-                    "thanks to dependency caching.",
-                ),
-                _comment(
-                    "Lee Zhang", days(2),
-                    "The e2e suite is flaky on the new runners - quarantined it and "
-                    "opened a ticket with the vendor. Remaining 6 pipelines should "
-                    "land early next week.",
-                ),
-            ],
-            "ABC-24": [
-                _comment(
-                    "Priya Nair", days(4),
-                    "SAML login working end-to-end against Acme's Okta sandbox.",
-                ),
-                _comment(
-                    "Priya Nair", days(1),
-                    "Blocked on Acme IT for the production IdP metadata - chased "
-                    "again today, their change window is next Tuesday.",
-                ),
-            ],
-            "ABC-25": [
-                _comment(
-                    "Sam Ortiz", days(3),
-                    "New signing cert issued; rotation runbook drafted and waiting "
-                    "for Priya's review before we schedule it.",
+                    "Lee Zhang", days(5),
+                    "Root cause: the retry worker re-enqueued deliveries that had "
+                    "already succeeded but timed out on the ack. Added an idempotency "
+                    "key per delivery and verified no duplicates over 24 hours.",
                 ),
             ],
         }
@@ -222,7 +209,7 @@ class MockJiraClient:
             return self._progress
         if "statusCategory != Done" in jql:
             return self._risk
-        if 'statusCategory = "In Progress"' in jql and "issuetype" not in jql:
+        if "openSprints()" in jql:
             return self._this_week
         return self._milestones
 

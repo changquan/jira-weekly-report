@@ -33,12 +33,10 @@ class Settings(BaseSettings):
     # --- Report tuning ---
     initiative_issue_type: str = "Initiative"
     risk_window_days: int = 14
-    in_progress_status_category: str = "In Progress"
 
     # --- AI activity summaries (optional; disabled when no API key is set) ---
     openai_api_key: str | None = None
     openai_model: str = "gpt-5-mini"
-    activity_lookback_days: int = 7
     summary_max_concurrency: int = 4
 
     # --- HTTP client ---

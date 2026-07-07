@@ -40,10 +40,6 @@ class IssueActivity:
     subtasks: list[SubtaskInfo] = field(default_factory=list)
     comments: list[ActivityComment] = field(default_factory=list)
 
-    @property
-    def is_empty(self) -> bool:
-        return not self.subtasks and not self.comments
-
 
 # Blocks whose children should be separated by newlines when flattened.
 _ADF_BLOCK_NODES = {

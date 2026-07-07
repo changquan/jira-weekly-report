@@ -24,15 +24,16 @@ def test_mock_client_feeds_every_column_and_the_summarizer():
 
     assert report.progress and report.risks and report.this_week and report.milestones
 
-    # Every in-progress issue has recent mock activity, so all get summaries.
-    assert all(i.activity_summary == "Mock AI summary" for i in report.this_week)
+    # Every completed issue has recent mock comments, so all get summaries.
+    assert all(i.activity_summary == "Mock AI summary" for i in report.progress)
+    # The "this week" column no longer carries summaries.
+    assert all(i.activity_summary is None for i in report.this_week)
 
     # The summarizer saw comments from parents and their subtasks.
     by_key = {issue.key: activity for issue, activity in summarizer.requests}
-    billing = by_key["ABC-20"]
-    assert {s.key for s in billing.subtasks} == {"ABC-21", "ABC-22"}
-    assert {c.issue_key for c in billing.comments} == {"ABC-20", "ABC-21", "ABC-22"}
-    assert any("finance sign-off" in c.text for c in billing.comments)
+    rate_limiter = by_key["ABC-10"]
+    assert {s.key for s in rate_limiter.subtasks} == {"ABC-12", "ABC-13"}
+    assert {c.issue_key for c in rate_limiter.comments} == {"ABC-10", "ABC-12", "ABC-13"}
 
 
 def test_mock_mode_serves_the_api_without_jira():
@@ -43,6 +44,7 @@ def test_mock_mode_serves_the_api_without_jira():
     assert response.status_code == 200
 
     body = response.json()
-    assert [i["key"] for i in body["thisWeek"]] == ["ABC-20", "ABC-23", "ABC-24"]
+    # The sprint column includes cross-project and not-yet-started issues.
+    assert [i["key"] for i in body["thisWeek"]] == ["ABC-20", "ABC-23", "ABC-24", "OPS-31"]
     # No OPENAI_API_KEY in test settings -> summaries disabled, field is null.
     assert all(i["activitySummary"] is None for i in body["thisWeek"])

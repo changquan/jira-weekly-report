@@ -96,7 +96,7 @@ export function App() {
         <ReportColumn
           title="This Week"
           items={report?.thisWeek ?? []}
-          emptyMessage="Nothing in progress this week"
+          emptyMessage="Nothing in the current sprint"
           renderItem={(item) => <IssueCard item={item} />}
         />
         <ReportColumn

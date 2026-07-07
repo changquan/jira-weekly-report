@@ -29,7 +29,10 @@ def test_jql_builders_use_config():
     assert "statusCategory != Done" in risk
     assert 'duedate <= "2026-07-15"' in risk
 
-    assert 'statusCategory = "In Progress"' in this_week_jql(settings)
+    # This-week = the active sprint; sprints can span projects, so the
+    # default query must not be scoped to the configured project.
+    assert "sprint in openSprints()" in this_week_jql(settings)
+    assert "project" not in this_week_jql(settings)
     assert 'issuetype = "Epic"' in milestones_jql(settings)
 
 
@@ -93,6 +96,11 @@ def test_build_report_assembles_all_columns():
     assert report.project_key == "ABC"
     assert report.generated_at == NOW
     assert report.window.last_week_start.isoformat() == "2026-06-22"
+
+    # The progress query must fetch subtask stubs for the activity summaries;
+    # the this-week query no longer needs them.
+    assert "subtasks" in searcher.fields_by_column["progress"]
+    assert "subtasks" not in searcher.fields_by_column["this_week"]
 
     assert [i.key for i in report.progress] == ["ABC-10"]
     assert report.progress[0].resolution_date is not None
