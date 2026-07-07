@@ -16,7 +16,10 @@ export function ReportColumn<T extends { key: string }>({
 }: ReportColumnProps<T>) {
   return (
     <section className={styles.column}>
-      <h2 className={styles.title}>{title}</h2>
+      <header className={styles.plate}>
+        <h2 className={styles.title}>{title}</h2>
+        <span className={styles.count}>{items.length}</span>
+      </header>
       {items.length === 0 ? (
         <p className={styles.empty}>{emptyMessage}</p>
       ) : (

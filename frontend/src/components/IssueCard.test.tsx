@@ -15,6 +15,7 @@ const baseIssue: IssueSummary = {
   resolutionDate: '2026-06-28T00:00:00+00:00',
   updated: null,
   url: 'https://example.atlassian.net/browse/ABC-10',
+  activitySummary: null,
 }
 
 describe('IssueCard', () => {
@@ -26,6 +27,16 @@ describe('IssueCard', () => {
     expect(screen.getByText('Done')).toBeInTheDocument()
     expect(screen.getByText('Dana')).toBeInTheDocument()
     expect(screen.getByRole('link')).toHaveAttribute('data-signal', 'green')
+  })
+
+  it('renders the AI activity summary when present', () => {
+    render(
+      <IssueCard
+        item={{ ...baseIssue, activitySummary: 'Deployed the migration to staging.' }}
+      />,
+    )
+
+    expect(screen.getByText('Deployed the migration to staging.')).toBeInTheDocument()
   })
 
   it('renders an overdue risk with a red rail and an Overdue label', () => {

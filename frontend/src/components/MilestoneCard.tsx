@@ -14,15 +14,12 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
 
   return (
     <a className={styles.card} data-signal={signal} href={item.url} target="_blank" rel="noreferrer">
-      <span className={styles.rail} data-signal={signal} aria-hidden="true" />
-      <div className={styles.body}>
-        <div className={styles.meta}>
-          <span>{item.key}</span>
-          <span>{statusLabel}</span>
-        </div>
-        <p className={styles.summary}>{item.summary}</p>
-        {dueDate && <p className={styles.footer}>due {dueDate}</p>}
+      <div className={styles.meta}>
+        <span className={styles.key}>{item.key}</span>
+        <span className={styles.pill}>{statusLabel}</span>
       </div>
+      <p className={styles.summary}>{item.summary}</p>
+      {dueDate && <p className={styles.footer}>due {dueDate}</p>}
     </a>
   )
 }

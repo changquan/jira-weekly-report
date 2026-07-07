@@ -10,6 +10,7 @@ export interface IssueSummary {
   resolutionDate: string | null
   updated: string | null
   url: string
+  activitySummary: string | null
 }
 
 export interface RiskItem extends IssueSummary {

@@ -14,6 +14,7 @@ const baseIssue: IssueSummary = {
   resolutionDate: null,
   updated: null,
   url: 'https://example.atlassian.net/browse/ABC-1',
+  activitySummary: null,
 }
 
 describe('issueSignal', () => {

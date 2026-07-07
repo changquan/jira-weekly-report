@@ -19,18 +19,21 @@ export function IssueCard({ item }: IssueCardProps) {
 
   return (
     <a className={styles.card} data-signal={signal} href={item.url} target="_blank" rel="noreferrer">
-      <span className={styles.rail} data-signal={signal} aria-hidden="true" />
-      <div className={styles.body}>
-        <div className={styles.meta}>
-          <span>{item.key}</span>
-          <span>{statusLabel}</span>
-        </div>
-        <p className={styles.summary}>{item.summary}</p>
-        <p className={styles.footer}>
-          {item.assignee && <span>{item.assignee}</span>}
-          {dueDate && <span>due {dueDate}</span>}
-        </p>
+      <div className={styles.meta}>
+        <span className={styles.key}>{item.key}</span>
+        <span className={styles.pill}>{statusLabel}</span>
       </div>
+      <p className={styles.summary}>{item.summary}</p>
+      {item.activitySummary && (
+        <div className={styles.ai}>
+          <span className={styles.aiLabel}>✦ AI summary</span>
+          <p className={styles.aiText}>{item.activitySummary}</p>
+        </div>
+      )}
+      <p className={styles.footer}>
+        {item.assignee && <span>{item.assignee}</span>}
+        {dueDate && <span>due {dueDate}</span>}
+      </p>
     </a>
   )
 }

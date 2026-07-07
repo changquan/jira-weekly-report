@@ -34,6 +34,7 @@ const sampleReport = {
       resolutionDate: '2026-06-28T00:00:00+00:00',
       updated: null,
       url: 'https://example.atlassian.net/browse/ABC-10',
+      activitySummary: null,
     },
   ],
   risks: [],
