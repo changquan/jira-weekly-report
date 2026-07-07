@@ -10,8 +10,10 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 
 from .config import Settings
 from .jira_client import JiraClient
+from .mock_jira import MockJiraClient
 from .models import WeeklyReport
 from .report import build_report
+from .summarizer import OpenAIActivitySummarizer
 
 app = FastAPI(
     title="JIRA Weekly Report API",
@@ -28,8 +30,20 @@ def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]  # values come from env/.env
 
 
-def get_searcher(settings: Settings = Depends(get_settings)) -> JiraClient:
+def get_searcher(
+    settings: Settings = Depends(get_settings),
+) -> JiraClient | MockJiraClient:
+    if settings.mock_jira:
+        return MockJiraClient(settings.initiative_issue_type)
     return JiraClient(settings)
+
+
+def get_summarizer(
+    settings: Settings = Depends(get_settings),
+) -> OpenAIActivitySummarizer | None:
+    if not settings.openai_api_key:
+        return None
+    return OpenAIActivitySummarizer(settings)
 
 
 @app.get("/health")
@@ -47,14 +61,15 @@ async def get_report(
         ),
     ),
     settings: Settings = Depends(get_settings),
-    searcher: JiraClient = Depends(get_searcher),
+    searcher: JiraClient | MockJiraClient = Depends(get_searcher),
+    summarizer: OpenAIActivitySummarizer | None = Depends(get_summarizer),
 ) -> WeeklyReport:
     now = datetime.now().astimezone()
     if as_of is not None:
         now = datetime.combine(as_of, datetime.min.time()).astimezone()
 
     try:
-        return await build_report(searcher, settings, now)
+        return await build_report(searcher, settings, now, summarizer=summarizer)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=502,

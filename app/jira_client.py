@@ -1,8 +1,9 @@
-"""Thin async client for JIRA Cloud's enhanced JQL search endpoint.
+"""Thin async client for JIRA Cloud's search and comment endpoints.
 
-Uses ``POST /rest/api/3/search/jql`` (the current Cloud search API, which
-replaced the deprecated ``/rest/api/3/search``) and follows ``nextPageToken``
-pagination until all matching issues are collected.
+Search uses ``POST /rest/api/3/search/jql`` (the current Cloud search API,
+which replaced the deprecated ``/rest/api/3/search``) and follows
+``nextPageToken`` pagination until all matching issues are collected.
+Comments use ``GET /rest/api/3/issue/{key}/comment`` with offset pagination.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import httpx
 from .config import Settings
 
 SEARCH_PATH = "/rest/api/3/search/jql"
+COMMENT_PATH = "/rest/api/3/issue/{key}/comment"
 
 
 class JiraClient:
@@ -56,3 +58,31 @@ class JiraClient:
                     break
 
         return issues
+
+    async def get_comments(self, issue_key: str) -> list[dict[str, Any]]:
+        """Fetch every comment on an issue, newest first (all pages)."""
+        comments: list[dict[str, Any]] = []
+        start_at = 0
+
+        async with httpx.AsyncClient(timeout=self._timeout, auth=self._auth) as client:
+            while True:
+                response = await client.get(
+                    f"{self._base_url}{COMMENT_PATH.format(key=issue_key)}",
+                    params={
+                        "startAt": start_at,
+                        "maxResults": self._page_size,
+                        "orderBy": "-created",
+                    },
+                    headers={"Accept": "application/json"},
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                page = data.get("comments") or []
+                comments.extend(page)
+
+                start_at += len(page)
+                if not page or start_at >= (data.get("total") or 0):
+                    break
+
+        return comments

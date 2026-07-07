@@ -15,7 +15,8 @@ def make_settings(**overrides: Any) -> Settings:
         "jira_project_key": "ABC",
     }
     values.update(overrides)
-    return Settings(**values)
+    # Never read the developer's real .env (or OPENAI_API_KEY) in tests.
+    return Settings(_env_file=None, **values)
 
 
 def issue(
@@ -30,6 +31,7 @@ def issue(
     assignee: str | None = None,
     priority: str | None = None,
     updated: str | None = None,
+    subtasks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "key": key,
@@ -42,6 +44,33 @@ def issue(
             "assignee": {"displayName": assignee} if assignee else None,
             "priority": {"name": priority} if priority else None,
             "updated": updated,
+            "subtasks": subtasks or [],
+        },
+    }
+
+
+def subtask_stub(key: str, summary: str = "Subtask", status: str = "To Do") -> dict[str, Any]:
+    """The abbreviated subtask payload JIRA embeds in a parent issue."""
+    return {
+        "key": key,
+        "fields": {
+            "summary": summary,
+            "status": {"name": status, "statusCategory": {"name": status}},
+        },
+    }
+
+
+def comment(author: str, created: str, text: str) -> dict[str, Any]:
+    """A raw JIRA comment with an ADF body."""
+    return {
+        "author": {"displayName": author},
+        "created": created,
+        "body": {
+            "type": "doc",
+            "version": 1,
+            "content": [
+                {"type": "paragraph", "content": [{"type": "text", "text": text}]}
+            ],
         },
     }
 
@@ -56,12 +85,15 @@ class FakeSearcher:
         risk: list[dict[str, Any]] | None = None,
         this_week: list[dict[str, Any]] | None = None,
         milestones: list[dict[str, Any]] | None = None,
+        comments: dict[str, list[dict[str, Any]]] | None = None,
     ) -> None:
         self.progress = progress or []
         self.risk = risk or []
         self.this_week = this_week or []
         self.milestones = milestones or []
+        self.comments = comments or {}
         self.calls: list[str] = []
+        self.comment_calls: list[str] = []
 
     async def search(self, jql: str, fields: list[str]) -> list[dict[str, Any]]:
         self.calls.append(jql)
@@ -72,3 +104,21 @@ class FakeSearcher:
         if 'statusCategory = "In Progress"' in jql:
             return self.this_week
         return self.milestones
+
+    async def get_comments(self, issue_key: str) -> list[dict[str, Any]]:
+        self.comment_calls.append(issue_key)
+        return self.comments.get(issue_key, [])
+
+
+class FakeSummarizer:
+    """Records what it was asked to summarize and returns a canned blurb."""
+
+    def __init__(self, text: str | None = "AI summary") -> None:
+        self.text = text
+        self.requests: list[tuple[Any, Any]] = []
+
+    async def summarize(self, issue: Any, activity: Any) -> str | None:
+        self.requests.append((issue, activity))
+        if activity.is_empty:
+            return None
+        return self.text

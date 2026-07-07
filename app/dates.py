@@ -1,4 +1,4 @@
-"""Week-window arithmetic for the report.
+"""Week-window arithmetic and JIRA datetime parsing for the report.
 
 Weeks run Monday -> Sunday. "This week" is the ISO week containing the
 reference date; "last week" is the immediately preceding Monday->Sunday week.
@@ -6,8 +6,25 @@ reference date; "last week" is the immediately preceding Monday->Sunday week.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+
+_TZ_NO_COLON = re.compile(r"(.*)([+-]\d{2})(\d{2})$")
+
+
+def parse_jira_datetime(value: str | None) -> datetime | None:
+    """Parse a JIRA datetime such as ``2026-06-25T13:45:00.000+0000``."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        match = _TZ_NO_COLON.match(value)
+        if match:
+            normalized = f"{match.group(1)}{match.group(2)}:{match.group(3)}"
+            return datetime.fromisoformat(normalized)
+        raise
 
 
 @dataclass(frozen=True)

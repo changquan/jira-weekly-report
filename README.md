@@ -9,7 +9,7 @@ render.
 | Column | Field(s) in response | What it contains |
 | ------ | -------------------- | ---------------- |
 | **1. Progress & Risk** | `progress`, `risks` | `progress`: issues **resolved during the previous week**. `risks`: **initiatives** that are not Done and are **overdue or due within `RISK_WINDOW_DAYS`** (default 14). |
-| **2. This week** | `thisWeek` | Issues currently **In Progress** — what the team is working on now. |
+| **2. This week** | `thisWeek` | Issues currently **In Progress** — what the team is working on now. With an OpenAI API key configured, each issue also carries `activitySummary`: an AI summary of the comments left on the issue **and its subtasks** during the reporting window. |
 | **3. Milestones & deadlines** | `milestones` | **Every initiative** and its due date, ordered by deadline. |
 
 "Initiatives" are issues whose JIRA issue type matches `INITIATIVE_ISSUE_TYPE`
@@ -66,7 +66,8 @@ uvicorn app.main:app --reload
     { "key": "ABC-1", "summary": "...", "dueDate": "2026-06-25", "overdue": true, "daysUntilDue": -6 }
   ],
   "thisWeek": [
-    { "key": "ABC-20", "summary": "...", "status": "In Progress", "assignee": "Dana" }
+    { "key": "ABC-20", "summary": "...", "status": "In Progress", "assignee": "Dana",
+      "activitySummary": "Migration deployed to staging; docs update in review." }
   ],
   "milestones": [
     { "key": "ABC-1", "summary": "...", "dueDate": "2026-06-25", "overdue": true }
@@ -85,6 +86,32 @@ Each column maps to one JQL query against JIRA Cloud's enhanced search endpoint
 - **milestones**: `issuetype = Initiative ORDER BY duedate ASC`.
 
 Any of these can be replaced wholesale via the `*_JQL` env vars.
+
+## AI activity summaries (optional)
+
+Set `OPENAI_API_KEY` in `.env` to enable AI summaries for the "This week"
+column. For each in-progress issue the backend:
+
+1. reads the issue's subtasks (from the `subtasks` field of the search result),
+2. fetches comments for the issue **and every subtask**
+   (`GET /rest/api/3/issue/{key}/comment`), keeping only those created within
+   the last `ACTIVITY_LOOKBACK_DAYS` (default 7),
+3. asks OpenAI (`OPENAI_MODEL`, default `gpt-5-mini`) for a 1-3 sentence
+   plain-language summary of what is actually being done.
+
+Summaries are fetched concurrently (capped by `SUMMARY_MAX_CONCURRENCY`) and
+degrade gracefully: if the key is unset, an issue has no recent activity, or
+an OpenAI call fails, the issue is returned with `activitySummary: null` and
+the rest of the report is unaffected.
+
+### Trying it without a JIRA instance
+
+Set `MOCK_JIRA=true` in `.env` (the `JIRA_*` values must still be present but
+can be dummies) and the backend serves generated fixture data instead of
+calling JIRA: in-progress issues with subtasks and realistic comment threads,
+dated relative to today so they always fall inside the reporting window. With
+`OPENAI_API_KEY` also set, `/api/report` returns real AI summaries of the mock
+comments — an end-to-end test of the summary pipeline.
 
 ## Tests
 
@@ -105,8 +132,11 @@ A React + Vite frontend that renders this API lives in `frontend/`. See
 ```
 app/
   config.py        # env-driven settings (pydantic-settings)
-  dates.py         # Monday→Sunday week-window math
-  jira_client.py   # async JIRA Cloud search client (httpx)
+  dates.py         # Monday→Sunday week-window math + JIRA datetime parsing
+  jira_client.py   # async JIRA Cloud search + comment client (httpx)
+  mock_jira.py     # generated fixture data for MOCK_JIRA=true
+  activity.py      # ADF comment flattening, subtask + comment collection
+  summarizer.py    # OpenAI-powered activity summaries
   models.py        # pydantic response models (camelCase JSON)
   report.py        # JQL builders + report assembly
   main.py          # FastAPI app and routes

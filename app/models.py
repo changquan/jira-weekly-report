@@ -30,6 +30,9 @@ class IssueSummary(CamelModel):
     resolution_date: datetime | None = None
     updated: datetime | None = None
     url: str
+    # AI-generated blurb of recent activity (comments across the issue and its
+    # subtasks); only populated for in-progress issues when summaries are enabled.
+    activity_summary: str | None = None
 
 
 class RiskItem(IssueSummary):

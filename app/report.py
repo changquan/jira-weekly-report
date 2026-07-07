@@ -5,19 +5,21 @@ Columns:
    - progress: issues completed (resolved) during the previous week.
    - risks: initiatives that are not Done and are overdue or due within
      ``risk_window_days``.
-2. This week: issues currently in progress (what the team is working on now).
+2. This week: issues currently in progress (what the team is working on now),
+   optionally enriched with an AI summary of recent comments across the issue
+   and its subtasks.
 3. Milestones: every initiative and its deadline.
 """
 
 from __future__ import annotations
 
 import asyncio
-import re
 from datetime import date, datetime, timedelta
 from typing import Any, Protocol
 
+from .activity import CommentSource, collect_activity
 from .config import Settings
-from .dates import WeekWindows, compute_windows
+from .dates import WeekWindows, compute_windows, parse_jira_datetime
 from .models import (
     IssueSummary,
     MilestoneItem,
@@ -25,6 +27,7 @@ from .models import (
     RiskItem,
     WeeklyReport,
 )
+from .summarizer import ActivitySummarizer
 
 ISSUE_FIELDS = [
     "summary",
@@ -37,8 +40,10 @@ ISSUE_FIELDS = [
     "updated",
 ]
 
+# The "this week" query also needs subtask stubs for the activity summary.
+THIS_WEEK_FIELDS = [*ISSUE_FIELDS, "subtasks"]
+
 _DONE_CATEGORY = "Done"
-_TZ_NO_COLON = re.compile(r"(.*)([+-]\d{2})(\d{2})$")
 
 
 class IssueSearcher(Protocol):
@@ -104,20 +109,6 @@ def _parse_date(value: str | None) -> date | None:
     return date.fromisoformat(value)
 
 
-def _parse_datetime(value: str | None) -> datetime | None:
-    """Parse a JIRA datetime such as ``2026-06-25T13:45:00.000+0000``."""
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        match = _TZ_NO_COLON.match(value)
-        if match:
-            normalized = f"{match.group(1)}{match.group(2)}:{match.group(3)}"
-            return datetime.fromisoformat(normalized)
-        raise
-
-
 def _fields(raw: dict[str, Any]) -> dict[str, Any]:
     return raw.get("fields") or {}
 
@@ -141,8 +132,8 @@ def to_issue_summary(raw: dict[str, Any], base_url: str) -> IssueSummary:
         assignee=assignee.get("displayName"),
         priority=_name(fields.get("priority")),
         due_date=_parse_date(fields.get("duedate")),
-        resolution_date=_parse_datetime(fields.get("resolutiondate")),
-        updated=_parse_datetime(fields.get("updated")),
+        resolution_date=parse_jira_datetime(fields.get("resolutiondate")),
+        updated=parse_jira_datetime(fields.get("updated")),
         url=f"{base_url.rstrip('/')}/browse/{key}",
     )
 
@@ -178,12 +169,49 @@ def to_milestone(raw: dict[str, Any], base_url: str, today: date) -> MilestoneIt
 # --------------------------------------------------------------------------- #
 # Report assembly                                                              #
 # --------------------------------------------------------------------------- #
+async def _summarize_one(
+    semaphore: asyncio.Semaphore,
+    comments: CommentSource,
+    summarizer: ActivitySummarizer,
+    issue: IssueSummary,
+    raw: dict[str, Any],
+    since: datetime,
+) -> None:
+    async with semaphore:
+        activity = await collect_activity(comments, raw, since)
+        issue.activity_summary = await summarizer.summarize(issue, activity)
+
+
+async def _add_activity_summaries(
+    comments: CommentSource,
+    summarizer: ActivitySummarizer,
+    issues: list[IssueSummary],
+    raw_issues: list[dict[str, Any]],
+    settings: Settings,
+    now: datetime,
+) -> None:
+    """Attach an AI activity summary to each in-progress issue, in place."""
+    since = now - timedelta(days=settings.activity_lookback_days)
+    semaphore = asyncio.Semaphore(settings.summary_max_concurrency)
+    await asyncio.gather(
+        *(
+            _summarize_one(semaphore, comments, summarizer, issue, raw, since)
+            for issue, raw in zip(issues, raw_issues)
+        )
+    )
+
+
 async def build_report(
     searcher: IssueSearcher,
     settings: Settings,
     now: datetime,
+    summarizer: ActivitySummarizer | None = None,
 ) -> WeeklyReport:
-    """Fetch the four JIRA queries concurrently and assemble the report."""
+    """Fetch the four JIRA queries concurrently and assemble the report.
+
+    When ``summarizer`` is provided, ``searcher`` must also implement
+    ``CommentSource`` so recent comments (issue + subtasks) can be summarized.
+    """
     today = now.date()
     windows = compute_windows(today)
     cutoff = today + timedelta(days=settings.risk_window_days)
@@ -192,9 +220,20 @@ async def build_report(
     progress_raw, risk_raw, this_week_raw, milestones_raw = await asyncio.gather(
         searcher.search(progress_jql(settings, windows), ISSUE_FIELDS),
         searcher.search(risk_jql(settings, cutoff), ISSUE_FIELDS),
-        searcher.search(this_week_jql(settings), ISSUE_FIELDS),
+        searcher.search(this_week_jql(settings), THIS_WEEK_FIELDS),
         searcher.search(milestones_jql(settings), ISSUE_FIELDS),
     )
+
+    this_week = [to_issue_summary(r, base_url) for r in this_week_raw]
+    if summarizer is not None and this_week:
+        await _add_activity_summaries(
+            searcher,  # type: ignore[arg-type]  # JiraClient implements CommentSource
+            summarizer,
+            this_week,
+            this_week_raw,
+            settings,
+            now,
+        )
 
     return WeeklyReport(
         generated_at=now,
@@ -208,6 +247,6 @@ async def build_report(
         ),
         progress=[to_issue_summary(r, base_url) for r in progress_raw],
         risks=[to_risk_item(r, base_url, today) for r in risk_raw],
-        this_week=[to_issue_summary(r, base_url) for r in this_week_raw],
+        this_week=this_week,
         milestones=[to_milestone(r, base_url, today) for r in milestones_raw],
     )
