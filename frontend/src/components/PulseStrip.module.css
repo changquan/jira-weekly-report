@@ -1,0 +1,92 @@
+/* Signature: one segment per issue on the board, colored by its signal. */
+.pulse {
+  margin-top: 1.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.bar {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.seg {
+  height: 8px;
+  flex: 1;
+  border-radius: 99px;
+  background: var(--idle);
+  animation: seg-in 400ms ease backwards;
+}
+
+.seg[data-signal='green'] {
+  background: var(--go);
+}
+
+.seg[data-signal='amber'] {
+  background: var(--hold);
+}
+
+.seg[data-signal='red'] {
+  background: var(--alarm);
+}
+
+@keyframes seg-in {
+  from {
+    transform: scaleX(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.legend {
+  display: flex;
+  gap: 1.1rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--idle);
+}
+
+.dot[data-signal='green'] {
+  background: var(--go);
+}
+
+.dot[data-signal='amber'] {
+  background: var(--hold);
+}
+
+.dot[data-signal='red'] {
+  background: var(--alarm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg {
+    animation: none;
+  }
+}

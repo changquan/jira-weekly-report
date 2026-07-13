@@ -1,0 +1,21 @@
+:root {
+  /* Monday-briefing palette: layered blue-dark surfaces, three signal hues,
+     and a violet→cyan gradient reserved for AI-written content. */
+  --bg: #0c111b; /* page ground */
+  --card: #131a28; /* card surface */
+  --raised: #1a2333; /* raised block inside a card */
+  --line: rgba(148, 166, 196, 0.14);
+  --line-strong: rgba(148, 166, 196, 0.28);
+  --text: #e6ecf7;
+  --muted: #8a97ad;
+  --go: #46d19a; /* done */
+  --hold: #f2b03d; /* due soon */
+  --alarm: #ff6b5e; /* overdue */
+  --idle: #5d6b82; /* in flight */
+  --ai-a: #8b7cf6;
+  --ai-b: #4cc3f7;
+
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}

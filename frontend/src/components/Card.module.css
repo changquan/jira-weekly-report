@@ -1,0 +1,139 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 140ms ease, transform 140ms ease;
+}
+
+.card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--ai-b);
+  outline-offset: 2px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.key {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Status pill, tinted by the card's signal. */
+.pill {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: 99px;
+  padding: 0.14rem 0.6rem;
+  background: color-mix(in srgb, var(--idle) 18%, transparent);
+  color: color-mix(in srgb, var(--idle) 55%, var(--text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card[data-signal='green'] .pill {
+  background: color-mix(in srgb, var(--go) 14%, transparent);
+  color: var(--go);
+}
+
+.card[data-signal='amber'] .pill {
+  background: color-mix(in srgb, var(--hold) 14%, transparent);
+  color: var(--hold);
+}
+
+.card[data-signal='red'] .pill {
+  background: color-mix(in srgb, var(--alarm) 14%, transparent);
+  color: var(--alarm);
+}
+
+.summary {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+/* AI-written content: raised block with the gradient edge. */
+.ai {
+  position: relative;
+  padding: 0.65rem 0.85rem;
+  background: var(--raised);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ai::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--ai-a), var(--ai-b));
+}
+
+.aiLabel {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--ai-a), var(--ai-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 0.3rem;
+}
+
+.aiText {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+  overflow-wrap: break-word;
+}
+
+.footer {
+  margin: 0.15rem 0 0;
+  display: flex;
+  gap: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.card[data-signal='red'] .footer {
+  color: var(--alarm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}
